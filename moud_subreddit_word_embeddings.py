@@ -1,28 +1,26 @@
+import numpy
+import pandas as pd
 import gensim
-from gensim.models import KeyedVectors
-# Make sure pip install gensim==3.8.1
-from gensim.models.word2vec import Word2Vec
+from gensim.models import Word2Vec
+#requires Cython==0.29.23
+from gensim.models.keyedvectors import KeyedVectors
 
-model = Word2Vec.load("400features_10minwords_5context")
+
+model = KeyedVectors.load_word2vec_format('trig-vectors-phrase.bin', binary=True, encoding='latin-1')
+model2 = KeyedVectors.load_word2vec_format('trig-vectors-phrase.txt', binary=False)
+
 # stigma OR bias OR stereotype OR abuser OR stereotype
 # NIDA: https://www.drugabuse.gov/nidamed-medical-health-professionals/health-professions-education/words-matter-terms-to-use-avoid-when-talking-about-addiction
 # Included: Addict, User, Abuser, Junkie, Alcoholic, Drunk, Habit, Dirty,
+# Added in this study: stigma, bias, stereotype, shame, blame (From studies on stigma, bias, and types of stigmatization referenced in literature)
 # Not included: clean, addicted baby, opioid substitution replacement therapy, medication-assisted treatment, former addict, reformed adict
-print model.most_similar("addict")
-print model.most_similar("user")
-print model.most_similar("abuser")
-print model.most_similar("junkie")
-print model.most_similar("alcoholic")
-print model.most_similar("drunk")
-print model.most_similar("habit")
-print model.most_similar("dirty")
-print model.most_similar("stigma")
-print model.most_similar("bias")
-print model.most_similar("stereotype")
 
-# stigma_words = model.wv.most_similar("stigma")
+bias_stem_words = ["user","abuser","junkie","alcoholic", "drunk", "habit", "dirty", "stigma","bias","stereotype","shame","blame"]
+bias_words_df = pd.DataFrame({
+    'stem_word': bias_stem_words
+})
 
-
-#build into table/list
-
+bias_words_df['most_similar_words'] = bias_words_df['stem_word'].apply(model2.most_similar)
+bias_words_df.to_csv("bias_lexicon_stem_and_similar.csv")
+print(bias_words_df)
 
