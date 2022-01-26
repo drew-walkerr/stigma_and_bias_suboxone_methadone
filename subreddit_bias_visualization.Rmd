@@ -11,10 +11,12 @@ library(tidyverse)
 library(ggplot2)
 library(lubridate)
 library(here)
+library(patchwork)
 ```
 
 ```{r load-subreddit-data}
 subreddit_data <- read_csv("all_subreddit_posts.csv")
+bias_subreddit_data <- read_csv("all_subreddit_bias_posts.csv")
 ```
 
 
@@ -31,7 +33,7 @@ current_time <- Sys.time()
 st <- format(current_time,"%Y-%m-%d_%H_%M")
 #Create daily posting plot
 posts_per_day_plot <- ggplot(subreddit_by_date, aes(day, posts_per_day)) +
-  geom_line(aes(y = posts_per_day), color = "darkred")+
+  geom_line(aes(y = posts_per_day), color = "purple")+
   geom_smooth(method = "loess", se = FALSE) +
   labs(y = "Reddit Posts per Day", title = "Reddit posts and comments about bias terms")+
   scale_x_date(date_breaks = "12 months", date_labels = "%b-%y")+
@@ -40,3 +42,30 @@ posts_per_day_plot
 posts_per_day_filename <- paste0(here("posts_per_day"),st,".png") 
 ggsave(posts_per_day_filename)
 ```
+Bias version
+
+```{r bias-plots}
+
+bias_subreddit_by_date <- bias_subreddit_data %>% 
+  mutate(day = as.Date(created),
+         month = month(day),
+         year = year(day)) %>% 
+  dplyr::group_by(day) %>% 
+  dplyr::summarize(posts_per_day = n())
+# Get system time for auto-naming plots with date/time
+current_time <- Sys.time()
+st <- format(current_time,"%Y-%m-%d_%H_%M")
+#Create daily posting plot
+bias_posts_per_day_plot <- ggplot(bias_subreddit_by_date, aes(day, posts_per_day)) +
+  geom_line(aes(y = posts_per_day), color = "orange")+
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(y = "Reddit Posts with bias lexicon terms per Day", title = "Reddit posts and comments with bias terms")+
+  scale_x_date(date_breaks = "12 months", date_labels = "%b-%y")+
+    theme_classic()+theme(axis.title.x=element_blank())
+bias_posts_per_day_plot
+bias_posts_per_day_filename <- paste0(here("bias_posts_per_day"),st,".png") 
+ggsave(bias_posts_per_day_filename)
+
+posts_per_day_plot / bias_posts_per_day_plot
+#actually, combine into one so we don't inflate the scale of bias one in perspective to total
+``` 
