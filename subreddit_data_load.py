@@ -22,3 +22,9 @@ for subreddit in path_list:
     bigdf = pd.concat(data)
 
 bigdf.to_csv("all_subreddit_posts.csv")
+
+# Next step: use bias lexicon to search for any posts with mentions of lexicon words
+bias_big_df = bigdf[bigdf['body'].str.contains('user|abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame', na=False)]
+
+# Visualizations-- plotting frequencies over time, prevalences within each of the communities
+
