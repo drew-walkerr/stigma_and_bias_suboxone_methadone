@@ -105,5 +105,5 @@ def get_matches_df(sparse_matrix, name_vector, top=100):
                          'similairity': similairity})
 
 stigma_words = ["abuser","junkie","alcoholic","drunk","habit","dirty","stigma","bias","stereotype","shame","blame"]
-matches_df = get_matches_df(matches, org_names, top=1000)
+matches_df = get_matches_df(matches, stigma_words, top=1000)
 matches_df.sample(20)

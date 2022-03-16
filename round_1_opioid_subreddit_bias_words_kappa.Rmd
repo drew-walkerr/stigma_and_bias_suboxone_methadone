@@ -1,0 +1,51 @@
+---
+title: "round_3_reliability"
+author: "Drew Walker"
+date: "10/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(irr)
+library(janitor)
+library(table1)
+```
+
+
+```{r read_data}
+raw_annotation_data_dw_jl <- read_csv("bias_lexicon_stem_and_similar_round1_codings_JL_DW.csv") %>% 
+  clean_names() 
+```
+
+```{r kappas}
+
+relevant_words <- raw_annotation_data_dw_jl %>% 
+  select(drew_code,jenn_code)
+
+relevant_word_kappa <- irr::kappa2(relevant_words)
+relevant_word_kappa
+
+```
+
+
+
+```{r combine-labels}
+combined <- raw_annotation_data_dw_jl %>% 
+  mutate(relevant_combined = case_when(drew_code==1|drew_code==1 ~1,TRUE~0))
+table(combined$relevant_combined)
+```
+
+# Disagreements
+## Drew yes, Jenn No
+* fiend
+* favoritism
+* racial_stereotype
+* pity
+
+
+## Jenn Yes, Drew No
+* Abusee
+* Abusive
+* Unrepentant abuser
