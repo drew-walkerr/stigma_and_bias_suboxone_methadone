@@ -33,8 +33,18 @@ relevant_word_kappa
 
 ```{r combine-labels}
 combined <- raw_annotation_data_dw_jl %>% 
-  mutate(relevant_combined = case_when(drew_code==1|drew_code==1 ~1,TRUE~0))
-table(combined$relevant_combined)
+  mutate(relevant_combined = case_when(drew_code==1|jenn_code==1 ~1,TRUE~0))
+table(combined$relevant_combined) 
+
+combined_word_getter <- combined %>% 
+  filter(relevant_combined == 1) %>% 
+  filter(similar_word != "favoritism" & similar_word != "racial_stereotype" & similar_word != "racial_stereotype" & similar_word != "pity" & similar_word != "abusee" & similar_word != "abusive")
+
+word_list <- combined_word_getter %>% 
+  select(similar_word,stem_word,score)
+write_csv(word_list, "word_list_expanded.csv")
+#include one to take out the disagreements 
+
 ```
 
 # Disagreements
