@@ -29,7 +29,7 @@ bias_words_df['most_similar_words'] = bias_words_df['stem_word'].apply(model2.mo
 bias_words_df_2 = bias_words_df.explode("most_similar_words", ignore_index=True)
 bias_words_df_2['new_word_id'] = range(1, 1 + len(bias_words_df_2))
 # bias_words_df_2[['similar_word','similarity_score']] =
-words_sep = pd.DataFrame(bias_words_df_2['most_similar_words'].values.tolist(), index = df.index)
+words_sep = pd.DataFrame(bias_words_df_2['most_similar_words'].values.tolist())
 words_sep['new_word_id'] = range(1, 1 + len(bias_words_df_2))
 bias_words_3 = bias_words_df_2.merge(words_sep, on = 'new_word_id')
 #bias_words_3['similar_word'], bias_words_3['score'] = bias_words_3[3],bias_words_3[4]
@@ -87,4 +87,7 @@ def generate_spelling_variants(seedwordlist, word_vectors, semantic_search_lengt
     return vars
 
 expanded = generate_spelling_variants(bias_stem_words, model2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
+
+
+expanded.to_csv("expanded_misspellings.csv")
 
