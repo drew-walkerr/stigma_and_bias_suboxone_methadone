@@ -86,5 +86,5 @@ def generate_spelling_variants(seedwordlist, word_vectors, semantic_search_lengt
         vars[seedword] = list(set(vars[seedword]))
     return vars
 
-expanded = def generate_spelling_variants(bias_stem_words, model_2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
+expanded = generate_spelling_variants(bias_stem_words, model2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
 
