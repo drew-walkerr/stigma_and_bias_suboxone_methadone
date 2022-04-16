@@ -4,6 +4,10 @@ import gensim
 from gensim.models import Word2Vec
 #requires Cython==0.29.23
 from gensim.models.keyedvectors import KeyedVectors
+from collections import defaultdict
+from gensim.models import Word2Vec, KeyedVectors
+import Levenshtein, re
+import sys
 
 #STill unable to get model to run by uploading just from binary-- though it did work once and i was able to write/save the format to trig-vectors-phrase.txt
 #model = KeyedVectors.load_word2vec_format('trig-vectors-phrase.bin', binary=True, encoding='latin-1')
@@ -33,4 +37,54 @@ bias_words_3 = bias_words_df_2.merge(words_sep, on = 'new_word_id')
 bias_words_3= bias_words_3.rename(columns={0: "similar_word", 1: "score"})
 bias_words_3["Relevant_to_study"] = ""
 bias_words_3.to_csv("bias_lexicon_stem_and_similar_round1.csv")
+
+
+## Misspelling Generator
+
+
+
+def generate_spelling_variants(seedwordlist, word_vectors, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1):
+    """
+        setting -> 0 = weighted levenshtein ratios
+                -> 1 = standard levenshtein ratios
+
+    :param seedwordlist:            list of words for which spelling variants are to be generated
+    :param word_vectors:            the word vector model
+    :param semantic_search_length:  the number of semantically similar terms to include in each iteration
+    :param levenshtein_threshold:   the threshold for levenshtein ratio
+
+    :return: dictionary containing the seedwords as key and all the variants as a list of values
+
+    """
+    vars = defaultdict(list)
+    for seedword in seedwordlist:
+        #a dictionary to hold all the variants, key: the seedword, value: the list of possible misspellings
+        #a dynamic list of terms that are still to be expanded
+        terms_to_expand = []
+        terms_to_expand.append(seedword)
+        all_expanded_terms = []
+        level = 1
+        while len(terms_to_expand)>0:
+                t = terms_to_expand.pop(0)
+                all_expanded_terms.append(t)
+                try:
+                    similars = word_vectors.most_similar(t, topn=semantic_search_length)
+                    for similar in similars:
+                        similar_term = similar[0]
+                        if setting == 1:
+                            seq_score = Levenshtein.ratio(str(similar_term),seedword)
+                        if setting == 0:
+                            seq_score = weighted_levenshtein_ratio(str(similar_term), seedword)
+                        if seq_score>levenshtein_threshold:
+                            if not re.search(r'\_',similar_term):
+                                vars[seedword].append(similar_term)
+                                if not similar_term in all_expanded_terms and not similar_term in terms_to_expand:
+                                    terms_to_expand.append(similar_term)
+                except:
+                        pass
+                level+=1
+        vars[seedword] = list(set(vars[seedword]))
+    return vars
+
+expanded = def generate_spelling_variants(bias_stem_words, model_2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
 

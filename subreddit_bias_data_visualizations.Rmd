@@ -1,0 +1,71 @@
+---
+title: "words_visualizations"
+author: "Drew Walker"
+date: "4/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tm)
+library(tidytext)
+library(lubridate)
+```
+
+```{r ggplot_word}
+
+all_posts_df <- read_csv("all_subreddit_bias_posts.csv")
+ 
+bias_words <- as.tibble(c("abuser","junkie","alcoholic","drunk","habit","dirty","stigma","bias","stereotype","shame","blame"))
+#"abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame"
+
+get_summary_plot <- function(word){
+word_df <- all_posts_df %>%
+  filter(str_detect(body, word)) %>% 
+  mutate(day = as.Date(date(created))) %>% 
+  group_by(day) %>% 
+  summarize(count = n())
+  
+plot_obs <- ggplot(data=word_df,         
+                   aes(x = day,
+                       y = count))+
+  geom_line()+
+  #adding lines to plot
+                   theme_classic() + 
+  ggtitle(paste(word))+
+                   scale_y_continuous(name = "Daily Comments or Posts") 
+return(plot_obs)
+}
+
+get_summary_df <- function(word){
+word_df <- all_posts_df %>%
+  filter(str_detect(body, word)) %>% 
+  mutate(day = as.Date(date(created))) %>% 
+  group_by(day) %>% 
+  summarize(count = n())
+return(word_df)}
+
+get_summary_plot("junkie")
+junkie_df <- get_summary_df("junkie")
+```
+iteration
+```{r iterated-bias-sample}
+library(purrr)
+library(furrr)
+library(gridExtra)
+library(patchwork)
+possible_summary_plot <- purrr::possibly(get_summary_plot, otherwise = tidyr::tibble("NA"))
+possible_summary_df <- purrr::possibly(get_summary_df, otherwise = tidyr::tibble("NA"))
+
+
+bias_words_full <- bias_words %>% 
+  mutate(summary_plot = future_map(value, possible_summary_plot),
+         summary_df = future_map(value,possible_summary_df)) 
+
+plots <- bias_words_full$summary_plot
+wrap_plots(plots)
+grid.arrange(grobs = plots, ncol = 2)
+
+```
+
