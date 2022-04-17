@@ -23,31 +23,34 @@ bias_words <- as.tibble(c("abuser","junkie","alcoholic","drunk","habit","dirty",
 get_summary_plot <- function(word){
 word_df <- all_posts_df %>%
   filter(str_detect(body, word)) %>% 
-  mutate(day = as.Date(date(created))) %>% 
-  group_by(day) %>% 
+  mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% 
+  group_by(month_year) %>% 
   summarize(count = n())
   
 plot_obs <- ggplot(data=word_df,         
-                   aes(x = day,
+                   aes(x = month_year,
                        y = count))+
   geom_line()+
   #adding lines to plot
                    theme_classic() + 
   ggtitle(paste(word))+
-                   scale_y_continuous(name = "Daily Comments or Posts") 
+                   scale_y_continuous(name = "Monthly Comments or Posts") 
 return(plot_obs)
 }
+get_summary_plot("junkie")
 
 get_summary_df <- function(word){
 word_df <- all_posts_df %>%
   filter(str_detect(body, word)) %>% 
-  mutate(day = as.Date(date(created))) %>% 
-  group_by(day) %>% 
+  mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% 
+  group_by(month_year) %>% 
   summarize(count = n())
 return(word_df)}
-
-get_summary_plot("junkie")
 junkie_df <- get_summary_df("junkie")
+
+
 ```
 iteration
 ```{r iterated-bias-sample}
@@ -65,7 +68,5 @@ bias_words_full <- bias_words %>%
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
-grid.arrange(grobs = plots, ncol = 2)
-
 ```
 
