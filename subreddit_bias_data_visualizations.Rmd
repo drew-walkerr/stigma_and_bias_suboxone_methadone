@@ -98,6 +98,6 @@ bias_words_full <- regex_list2 %>%
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
-ggsave('bias_terms_plots.png', width = 50, height = 50, units = "in", limitsize = FALSE)
+ggsave('bias_terms_plots.png', width = 25)
 ```
 
