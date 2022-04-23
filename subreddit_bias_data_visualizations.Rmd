@@ -18,6 +18,7 @@ library(lubridate)
 all_posts_df <- read_csv("all_subreddit_bias_posts.csv")
 
 word_list_with_stem <- read_csv("word_list_round_2.csv")
+word_list_with_stem$similar_word <- str_replace_all(word_list_with_stem$similar_word,"_"," ")
 #bias_words <- as.tibble(c("abuser","junkie","alcoholic","drunk","habit","dirty","stigma","bias","stereotype","shame","blame"))
 #"abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame"
 
@@ -28,7 +29,8 @@ no_misspellings_word_list <- bias_words_df %>%
   filter(number == "0") %>% 
   filter(is.na(ms_word)) %>% 
   select(regex = X1) %>% 
-  mutate(similar_word = regex)
+  mutate(similar_word = regex) %>% 
+  left_join(word_list_with_stem,by = "similar_word")
 
 bias_words_list <- bias_words_df %>% 
   pivot_longer(!X1, names_to = "number",values_to ="ms_word") %>% 
@@ -38,9 +40,14 @@ bias_words_list <- bias_words_df %>%
   group_by(stem_word) %>% 
   mutate(regex = paste(ms_word,collapse="|")) %>% 
   distinct(stem_word,.keep_all = TRUE) %>% 
-  select(stem_word,regex)
+  select(stem_word,regex,similar_word)
 
-regex_list <- bind_rows(no_misspellings_word_list,bias_words_list)
+regex_list <- bind_rows(no_misspellings_word_list,bias_words_list) 
+
+regex_list2 <- regex_list %>% 
+    group_by(stem_word) %>% 
+  mutate(regex2 = paste(regex,collapse="|")) %>% 
+  distinct(stem_word,.keep_all = TRUE)  
 
 get_summary_plot <- function(word){
 word_df <- all_posts_df %>%
@@ -48,7 +55,9 @@ word_df <- all_posts_df %>%
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
   group_by(month_year) %>% 
-  summarize(count = n())
+  mutate(count = n(),
+         regex2 = word) %>% 
+  left_join(regex_list2, by = "regex2")
   
 plot_obs <- ggplot(data=word_df,         
                    aes(x = month_year,
@@ -56,11 +65,10 @@ plot_obs <- ggplot(data=word_df,
   geom_line()+
   #adding lines to plot
                    theme_classic() + 
-  ggtitle(paste(word))+
+  ggtitle(paste(word_df$stem_word))+
                    scale_y_continuous(name = "Monthly Comments or Posts") 
 return(plot_obs)
 }
-get_summary_plot("junkie")
 
 get_summary_df <- function(word){
 word_df <- all_posts_df %>%
@@ -84,9 +92,9 @@ possible_summary_plot <- purrr::possibly(get_summary_plot, otherwise = tidyr::ti
 possible_summary_df <- purrr::possibly(get_summary_df, otherwise = tidyr::tibble("NA"))
 
 
-bias_words_full <- regex_list %>% 
-  mutate(summary_plot = future_map(regex, possible_summary_plot),
-         summary_df = future_map(regex,possible_summary_df)) 
+bias_words_full <- regex_list2 %>% 
+  mutate(summary_plot = future_map(regex2, possible_summary_plot),
+         summary_df = future_map(regex2,possible_summary_df)) 
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
