@@ -20,9 +20,12 @@ model2 = KeyedVectors.load_word2vec_format('trig-vectors-phrase.txt', binary=Fal
 # Not included: clean, addicted baby, opioid substitution replacement therapy, medication-assisted treatment, former addict, reformed adict
 
 bias_stem_words = ["user","abuser","junkie","alcoholic", "drunk", "habit", "dirty", "stigma","bias","stereotype","shame","blame"]
+
+
 bias_words_df = pd.DataFrame({
     'stem_word': bias_stem_words
 })
+
 
 bias_words_df['most_similar_words'] = bias_words_df['stem_word'].apply(model2.most_similar)
 
@@ -86,8 +89,17 @@ def generate_spelling_variants(seedwordlist, word_vectors, semantic_search_lengt
         vars[seedword] = list(set(vars[seedword]))
     return vars
 
-expanded = generate_spelling_variants(bias_stem_words, model2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
+bias_stem_words_round_2 = pd.read_csv("word_list_round_2.csv")
+bias_stem_words_round_2["similar_word"] = bias_stem_words_round_2["similar_word"].replace("_", " ", regex = True)
+
+bias_expanded_word_list = bias_stem_words_round_2["similar_word"]
 
 
-expanded.to_csv("expanded_misspellings.csv")
+expanded = generate_spelling_variants(bias_expanded_word_list, model2, semantic_search_length=500, levenshtein_threshold = 0.85, setting = 1)
+
+df = pd.DataFrame.from_dict(expanded, orient ='index')
+
+
+
+df.to_csv("expanded_misspellings.csv")
 

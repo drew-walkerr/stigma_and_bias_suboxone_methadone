@@ -1,5 +1,5 @@
 ---
-title: "words_visualizations"
+title: "Subreddit Bias Data Visualizations and Summaries"
 author: "Drew Walker"
 date: "4/16/2022"
 output: html_document
@@ -16,9 +16,31 @@ library(lubridate)
 ```{r ggplot_word}
 
 all_posts_df <- read_csv("all_subreddit_bias_posts.csv")
- 
-bias_words <- as.tibble(c("abuser","junkie","alcoholic","drunk","habit","dirty","stigma","bias","stereotype","shame","blame"))
+
+word_list_with_stem <- read_csv("word_list_round_2.csv")
+#bias_words <- as.tibble(c("abuser","junkie","alcoholic","drunk","habit","dirty","stigma","bias","stereotype","shame","blame"))
 #"abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame"
+
+bias_words_df <- read_csv("expanded_misspellings.csv")
+#Columns 0-27 include all misspelling words
+no_misspellings_word_list <- bias_words_df %>% 
+  pivot_longer(!X1, names_to = "number",values_to ="ms_word") %>% 
+  filter(number == "0") %>% 
+  filter(is.na(ms_word)) %>% 
+  select(regex = X1) %>% 
+  mutate(similar_word = regex)
+
+bias_words_list <- bias_words_df %>% 
+  pivot_longer(!X1, names_to = "number",values_to ="ms_word") %>% 
+  drop_na() %>% 
+  rename(similar_word = X1) %>% 
+  left_join(word_list_with_stem, by = "similar_word") %>% 
+  group_by(stem_word) %>% 
+  mutate(regex = paste(ms_word,collapse="|")) %>% 
+  distinct(stem_word,.keep_all = TRUE) %>% 
+  select(stem_word,regex)
+
+regex_list <- bind_rows(no_misspellings_word_list,bias_words_list)
 
 get_summary_plot <- function(word){
 word_df <- all_posts_df %>%
@@ -62,11 +84,12 @@ possible_summary_plot <- purrr::possibly(get_summary_plot, otherwise = tidyr::ti
 possible_summary_df <- purrr::possibly(get_summary_df, otherwise = tidyr::tibble("NA"))
 
 
-bias_words_full <- bias_words %>% 
-  mutate(summary_plot = future_map(value, possible_summary_plot),
-         summary_df = future_map(value,possible_summary_df)) 
+bias_words_full <- regex_list %>% 
+  mutate(summary_plot = future_map(regex, possible_summary_plot),
+         summary_df = future_map(regex,possible_summary_df)) 
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
+ggsave('bias_terms_plots.png', width = 50, height = 50, units = "in", limitsize = FALSE)
 ```
 
