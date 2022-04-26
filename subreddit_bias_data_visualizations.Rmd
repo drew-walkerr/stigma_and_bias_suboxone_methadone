@@ -98,6 +98,11 @@ bias_words_full <- regex_list2 %>%
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
-ggsave('bias_terms_plots.png', width = 25)
+ggsave('bias_terms_plots.png', width = 15)
+
+stem_word_and_regex <- regex_list2 %>% 
+  select(stem_word, regex=regex2)
+
+write_csv(stem_word_and_regex, "stem_word_and_regex.csv")
 ```
 
