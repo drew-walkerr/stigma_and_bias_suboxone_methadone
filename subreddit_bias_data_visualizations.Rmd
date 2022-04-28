@@ -95,7 +95,7 @@ get_trigrams <-
 word_df <- all_posts_df %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
-  select(stem_word = value)
+  select(regex = value)
 regex_for_word <- left_join(stem_word,stem_word_and_regex)
 
 word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
@@ -104,19 +104,23 @@ text_cleaning_tokens <- word_df %>%
 #remove words? like 
 text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
 text_cleaning_tokens$ngram <- gsub('^https|amp','', text_cleaning_tokens$ngram)
-#text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
-#  anti_join(stop_words)
 
-## count ngrams
+text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
+  separate(ngram, into = c("first","second","third"), sep = " ", remove = FALSE) %>%
+  anti_join(stop_words, by = c("first" = "word")) %>%
+  anti_join(stop_words, by = c("second" = "word")) %>% 
+  anti_join(stop_words, by = c("third" = "word"))
+
 word_count <- text_cleaning_tokens %>% 
   filter(ngram != "") %>% 
   count(ngram) %>% 
   arrange(-n) %>% 
-  slice_max(n, n = 20)
+  slice_max(n, n = 15) %>% 
+  mutate(stem_word = regex_for_word$stem_word)
 word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = ngram)) + 
           geom_col(show.legend = FALSE)+
   labs(x = "Trigram", y = "Count in Subreddit Posts")+
-  ggtitle(paste("Top Trigrams of Posts matching:", regex_for_word$stem_word))+
+  ggtitle(paste("Top Trigrams of Posts matching:", word_count$stem_word))+
   coord_flip()+
   theme_pubclean()
  return(word_count_bar)
@@ -127,7 +131,7 @@ get_bigrams <-
 word_df <- all_posts_df %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
-  select(stem_word = value)
+  select(regex = value)
 regex_for_word <- left_join(stem_word,stem_word_and_regex)
 
 word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
@@ -136,19 +140,22 @@ text_cleaning_tokens <- word_df %>%
 #remove words? like 
 text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
 text_cleaning_tokens$ngram <- gsub('^https|amp','', text_cleaning_tokens$ngram)
-#text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
-#  anti_join(stop_words)
 
+text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
+  separate(ngram, into = c("first","second"), sep = " ", remove = FALSE) %>%
+  anti_join(stop_words, by = c("first" = "word")) %>%
+  anti_join(stop_words, by = c("second" = "word"))
 ## count ngrams
 word_count <- text_cleaning_tokens %>% 
   filter(ngram != "") %>% 
   count(ngram) %>% 
   arrange(-n) %>% 
-  slice_max(n, n = 20) 
+  slice_max(n, n = 15) %>% 
+  mutate(stem_word = regex_for_word$stem_word)
 word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = ngram)) + 
           geom_col(show.legend = FALSE)+
   labs(x = "Bigram", y = "Count in Subreddit Posts")+
-  ggtitle(paste("Top Bigrams of Posts matching:", regex_for_word$stem_word))+
+  ggtitle(paste("Top Bigrams of Posts matching:", word_count$stem_word))+
   coord_flip()+
   theme_pubclean()
  return(word_count_bar)
@@ -160,7 +167,7 @@ get_top_words <-
 word_df <- all_posts_df %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
-  select(stem_word = value)
+  select(regex = value)
 regex_for_word <- left_join(stem_word,stem_word_and_regex)
 
 word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
@@ -178,11 +185,12 @@ word_count <- text_cleaning_tokens %>%
   filter(word != "") %>% 
   count(word) %>% 
   arrange(-n) %>% 
-  slice_max(n, n = 20) 
+  slice_max(n, n = 15) %>% 
+  mutate(stem_word = regex_for_word$stem_word)
 word_count_bar <- ggplot(word_count, aes(x= fct_reorder(word,n),y = n, fill = word)) + 
           geom_col(show.legend = FALSE)+
   labs(x = "Word", y = "Count in Subreddit Posts")+
-  ggtitle(paste("Top Words of Posts matching:", regex_for_word$stem_word))+
+  ggtitle(paste("Posts matching:", word_count$stem_word))+
   coord_flip()+
   theme_pubclean()
  return(word_count_bar)
@@ -218,18 +226,18 @@ ggsave('bias_terms_plots.png', width = 15)
 # Top words plots
 top_words <- bias_words_full$top_words
 wrap_plots(top_words)
-ggsave('top_ngrams_plots.png', width = 20, height = 20)
+ggsave('top_words_plots.png', width = 25, height = 20)
 
 # Top bigrams plots
 bigrams <- bias_words_full$bigrams
 wrap_plots(bigrams)
-ggsave('top_bigrams_plots.png', width = 20, height = 20)
+ggsave('top_bigrams_plots.png', width = 25, height = 20)
 
 
 # Top trigrams plots
 trigrams <- bias_words_full$trigrams
 wrap_plots(trigrams)
-ggsave('top_trigrams_plots.png', width = 20, height = 20)
+ggsave('top_trigrams_plots.png', width = 25, height = 20)
 
 write_csv(stem_word_and_regex, "stem_word_and_regex.csv")
 ```
