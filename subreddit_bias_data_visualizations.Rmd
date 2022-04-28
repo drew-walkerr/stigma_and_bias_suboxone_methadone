@@ -81,7 +81,47 @@ return(word_df)}
 junkie_df <- get_summary_df("junkie")
 
 
+
 ```
+```{r top-words}
+# Need to find a way to bring in stem word, join with word count df 
+library(tidytext)
+library(ggpubr)
+
+get_top_words <-
+ function(word){
+word_df <- all_posts_df %>%
+  filter(str_detect(body, word))
+
+word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
+text_cleaning_tokens <- word_df %>% 
+  tidytext::unnest_tokens(ngram, body,token = "ngrams",n=3) 
+#remove words? like 
+text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
+text_cleaning_tokens$ngram <- gsub('^https|amp','', text_cleaning_tokens$ngram)
+#text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
+#  anti_join(stop_words)
+
+## count ngrams
+word_count <- text_cleaning_tokens %>% 
+  filter(ngram != "") %>% 
+  count(ngram) %>% 
+  arrange(-n) %>% 
+  slice_max(n, n = 20) 
+word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = ngram)) + 
+          geom_col(show.legend = FALSE)+
+  labs(x = "Word", y = "Count in Subreddit Posts")+
+  ggtitle(paste("Top Words of Posts matching:", word_df$stem_word))+
+  coord_flip()+
+  theme_pubclean()
+ return(word_count_bar)
+}
+
+
+
+```
+
+
 iteration
 ```{r iterated-bias-sample}
 library(purrr)
@@ -90,15 +130,20 @@ library(gridExtra)
 library(patchwork)
 possible_summary_plot <- purrr::possibly(get_summary_plot, otherwise = tidyr::tibble("NA"))
 possible_summary_df <- purrr::possibly(get_summary_df, otherwise = tidyr::tibble("NA"))
-
+possible_get_top_words <- purrr::possibly(get_top_words, otherwise = tidyr::tibble("NA"))
 
 bias_words_full <- regex_list2 %>% 
   mutate(summary_plot = future_map(regex2, possible_summary_plot),
-         summary_df = future_map(regex2,possible_summary_df)) 
+         summary_df = future_map(regex2,possible_summary_df),
+         top_words = future_map(regex2,possible_get_top_words))
 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
 ggsave('bias_terms_plots.png', width = 15)
+
+top_words <- bias_words_full$top_words
+wrap_plots(top_words)
+ggsave('top_ngrams_plots.png', width = 20, height = 20)
 
 stem_word_and_regex <- regex_list2 %>% 
   select(stem_word, regex=regex2)
