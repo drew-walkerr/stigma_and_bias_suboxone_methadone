@@ -102,7 +102,7 @@ word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
 text_cleaning_tokens <- word_df %>% 
   tidytext::unnest_tokens(ngram, body,token = "ngrams",n=3) 
 #remove words? like 
-text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
+#text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
 text_cleaning_tokens$ngram <- gsub('^https|amp','', text_cleaning_tokens$ngram)
 
 text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
@@ -115,7 +115,7 @@ word_count <- text_cleaning_tokens %>%
   filter(ngram != "") %>% 
   count(ngram) %>% 
   arrange(-n) %>% 
-  slice_max(n, n = 15) %>% 
+  slice_max(n, n = 5) %>% 
   mutate(stem_word = regex_for_word$stem_word)
 word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = ngram)) + 
           geom_col(show.legend = FALSE)+
@@ -138,7 +138,7 @@ word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
 text_cleaning_tokens <- word_df %>% 
   tidytext::unnest_tokens(ngram, body,token = "ngrams",n=2) 
 #remove words? like 
-text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
+#text_cleaning_tokens$ngram <- gsub('[[:digit:]]+', '', text_cleaning_tokens$ngram)
 text_cleaning_tokens$ngram <- gsub('^https|amp','', text_cleaning_tokens$ngram)
 
 text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(ngram) == 1))%>% 
@@ -160,7 +160,6 @@ word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = n
   theme_pubclean()
  return(word_count_bar)
 }
-
 # Get top words
 get_top_words <-
  function(word){
@@ -174,7 +173,7 @@ word_df$body <- gsub('[[:punct:]]+', '', word_df$body)
 text_cleaning_tokens <- word_df %>% 
   tidytext::unnest_tokens(word, body) 
 #remove words? like 
-text_cleaning_tokens$word <- gsub('[[:digit:]]+', '', text_cleaning_tokens$word)
+#text_cleaning_tokens$word <- gsub('[[:digit:]]+', '', text_cleaning_tokens$word)
 text_cleaning_tokens$word <- gsub('^https|amp','', text_cleaning_tokens$word)
 text_cleaning_tokens <- text_cleaning_tokens %>% filter(!(nchar(word) == 1))%>% 
   anti_join(stop_words)
@@ -237,7 +236,7 @@ ggsave('top_bigrams_plots.png', width = 25, height = 20)
 # Top trigrams plots
 trigrams <- bias_words_full$trigrams
 wrap_plots(trigrams)
-ggsave('top_trigrams_plots.png', width = 25, height = 20)
+ggsave('top_trigrams_plots.png', width = 25, height = 20, limitsize = FALSE)
 
 write_csv(stem_word_and_regex, "stem_word_and_regex.csv")
 ```
