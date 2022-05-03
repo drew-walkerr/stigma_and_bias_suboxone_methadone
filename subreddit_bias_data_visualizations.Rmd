@@ -49,6 +49,14 @@ regex_list2 <- regex_list %>%
   mutate(regex2 = paste(regex,collapse="|")) %>% 
   distinct(stem_word,.keep_all = TRUE)  
 
+all_posts_counts <- all_posts_df %>% 
+    mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% group_by(month_year) %>% 
+  mutate(all_sub_count = n(), 
+           total_popularity = sum(score)) %>% 
+  distinct(month_year,all_sub_count,total_popularity)
+
+# Function that builds summary data frame and ggplot (split into two). word = regex for stem word + expanded words + misspellings 
 get_summary_plot <- function(word){
 word_df <- all_posts_df %>%
   filter(str_detect(body, word)) %>% 
@@ -56,17 +64,21 @@ word_df <- all_posts_df %>%
          month_year = floor_date(day, "month")) %>% 
   group_by(month_year) %>% 
   mutate(count = n(),
+         word_popularity = sum(score),
          regex2 = word) %>% 
-  left_join(regex_list2, by = "regex2")
+  left_join(regex_list2, by = "regex2") %>%  left_join(all_posts_counts, by = "month_year") %>% mutate(normalized_count = count/all_sub_count,
+         norm_hundred = normalized_count*100,
+         normalized_popularity = word_popularity/total_popularity,
+         norm_pop_hundred = normalized_popularity*100)
   
 plot_obs <- ggplot(data=word_df,         
                    aes(x = month_year,
-                       y = count))+
+                       y = norm_hundred))+
   geom_line()+
   #adding lines to plot
                    theme_classic() + 
   ggtitle(paste(word_df$stem_word))+
-                   scale_y_continuous(name = "Monthly Comments or Posts") 
+                   scale_y_continuous(name = "Comments/posts per 100") 
 return(plot_obs)
 }
 
@@ -76,13 +88,50 @@ word_df <- all_posts_df %>%
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
   group_by(month_year) %>% 
-  summarize(count = n())
+  mutate(count = n(),
+         regex2 = word) %>% 
+  left_join(regex_list2, by = "regex2") %>%  left_join(all_posts_counts, by = "month_year") %>% mutate(normalized_count = count/all_sub_count,
+         norm_hundred = normalized_count*100)
 return(word_df)}
-junkie_df <- get_summary_df("junkie")
-
-
+test_df <- get_summary_df("users|user")
+test_plot <- get_summary_plot("users|user")
+test_plot
 
 ```
+
+
+# Popularity plots
+(Number of likes posts with each word receives, divided by total likes on posts for each month)
+
+```{r popularity-plots}
+get_popularity_plot <- function(word){
+word_df <- all_posts_df %>%
+  filter(str_detect(body, word)) %>% 
+  mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% 
+  group_by(month_year) %>% 
+  mutate(count = n(),
+         word_popularity = sum(score),
+         regex2 = word) %>% 
+  left_join(regex_list2, by = "regex2") %>%  left_join(all_posts_counts, by = "month_year") %>% mutate(normalized_count = count/all_sub_count,
+         norm_hundred = normalized_count*100,
+         normalized_popularity = word_popularity/total_popularity,
+         norm_pop_hundred = normalized_popularity*100)
+  
+plot_obs <- ggplot(data=word_df,         
+                   aes(x = month_year,
+                       y = norm_pop_hundred))+
+  geom_line()+
+  #adding lines to plot
+                   theme_classic() + 
+  ggtitle(paste(word_df$stem_word))+
+                   scale_y_continuous(name = "Monthly Likes on Posts per 100 Likes in Subreddits") 
+return(plot_obs)
+}
+```
+
+
+
 ```{r top-words}
 # Need to find a way to bring in stem word, join with word count df 
 library(tidytext)
@@ -210,18 +259,25 @@ possible_summary_df <- purrr::possibly(get_summary_df, otherwise = tidyr::tibble
 possible_get_trigrams <- purrr::possibly(get_trigrams, otherwise = tidyr::tibble("NA"))
 possible_get_bigrams <- purrr::possibly(get_bigrams, otherwise = tidyr::tibble("NA"))
 possible_get_top_words <- purrr::possibly(get_top_words, otherwise = tidyr::tibble("NA"))
-
+possible_get_popularity_plot <- purrr::possibly(get_popularity_plot, otherwise = tidyr::tibble("NA"))
 
 bias_words_full <- regex_list2 %>% 
   mutate(summary_plot = future_map(regex2, possible_summary_plot),
          summary_df = future_map(regex2,possible_summary_df),
          trigrams = future_map(regex2,possible_get_trigrams),
          bigrams = future_map(regex2, possible_get_bigrams),
-         top_words = future_map(regex2,possible_get_top_words))
-
+         top_words = future_map(regex2,possible_get_top_words),
+         popularity_plot = future_map(regex2,possible_get_popularity_plot))
+# Normalized monthly terms per 100 posts 
 plots <- bias_words_full$summary_plot
 wrap_plots(plots)
-ggsave('bias_terms_plots.png', width = 15)
+ggsave('bias_terms_plots.png', width = 15, height = 10)
+
+#popularity plots 
+pop_plots <- bias_words_full$popularity_plot
+wrap_plots(pop_plots)
+ggsave('bias_terms_popularity_plots.png', width = 15, height = 10)
+
 # Top words plots
 top_words <- bias_words_full$top_words
 wrap_plots(top_words)
@@ -241,5 +297,35 @@ ggsave('top_trigrams_plots.png', width = 25, height = 20, limitsize = FALSE)
 write_csv(stem_word_and_regex, "stem_word_and_regex.csv")
 ```
 
+# Total posts plot
 
+Showing total number of comments and posts by month
+```{r totals-plot}
+total_word_df <- all_posts_df %>%
+  mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% 
+  group_by(month_year) %>% 
+  mutate(count = n(),
+         total_popularity = sum(score),
+         regex2 = word) %>% 
+  left_join(regex_list2, by = "regex2") 
+  
+total_plot_obs <- ggplot(data=total_word_df,         
+                   aes(x = month_year,
+                       y = count))+
+  geom_line()+
+  #adding lines to plot
+                   theme_classic() + 
+  ggtitle("Total Monthly Posts and Comments in MAT-Related Subreddits")+
+                   scale_y_continuous(name = "Total Monthly posts and comments") 
+
+total_plot_obs
+ggsave("total_monthly_posts_and_comments.png")
+
+#Users, 3308 in sample. # out before publication
+#all_posts_df %>% 
+#  group_by(author) %>% 
+#  distinct(author)
+# Can i get % of users that have used that term in a post? 
+```
 
