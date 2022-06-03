@@ -366,5 +366,8 @@ ggsave("all_stigma_words_regex_plot.png")
 
 
 all_bias_words_regex_df <- get_summary_df(all_bias_words_regex)
+
+# Looks like a majority of posts contain these terms. 
+# Next steps: Word by word validation, see if any are poorly performing in capturing experiences of bias. Remove those, and then run the combined regex of all the most relevant terms, and then test that combined regex qualitatively 
 ```
 
