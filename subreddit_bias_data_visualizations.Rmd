@@ -125,7 +125,7 @@ plot_obs <- ggplot(data=word_df,
   #adding lines to plot
                    theme_classic() + 
   ggtitle(paste(word_df$stem_word))+
-                   scale_y_continuous(name = "Monthly Likes on Posts per 100 Likes in Subreddits") 
+                   scale_y_continuous(name = "Monthly Likes per 100 Likes in Subreddits") 
 return(plot_obs)
 }
 ```
@@ -306,10 +306,7 @@ total_word_df <- all_posts_df %>%
          month_year = floor_date(day, "month")) %>% 
   group_by(month_year) %>% 
   mutate(count = n(),
-         total_popularity = sum(score),
-         regex2 = word) %>% 
-  left_join(regex_list2, by = "regex2") 
-  
+         total_popularity = sum(score)) 
 total_plot_obs <- ggplot(data=total_word_df,         
                    aes(x = month_year,
                        y = count))+
@@ -327,5 +324,47 @@ ggsave("total_monthly_posts_and_comments.png")
 #  group_by(author) %>% 
 #  distinct(author)
 # Can i get % of users that have used that term in a post? 
+```
+plot and df of all bias terms
+```{r plot-summary-bias-terms}
+get_all_words_plot <- function(word){
+word_df <- all_posts_df %>%
+  filter(str_detect(body, word)) %>% 
+  mutate(day = as.Date(date(created)),
+         month_year = floor_date(day, "month")) %>% 
+  group_by(month_year) %>% 
+  mutate(count = n(),
+         word_popularity = sum(score),
+         regex2 = word) %>% 
+  left_join(regex_list2, by = "regex2") %>%  left_join(all_posts_counts, by = "month_year") %>% mutate(normalized_count = count/all_sub_count,
+         norm_hundred = normalized_count*100,
+         normalized_popularity = word_popularity/total_popularity,
+         norm_pop_hundred = normalized_popularity*100)
+  
+plot_obs <- ggplot(data=word_df,         
+                   aes(x = month_year,
+                       y = norm_hundred))+
+  geom_line()+
+  #adding lines to plot
+                   theme_classic() + 
+  ggtitle("Percentage of Posts with Words in Stigma Lexicon")+
+                   scale_y_continuous(name = "Comments/posts per 100") 
+return(plot_obs)
+}
+
+
+
+regex_list2$regex2
+all_bias_words_regex <- paste0(regex_list2$regex2, sep = "|", collapse = "")
+
+all_bias_words_regex <- str_sub(all_bias_words_regex,1,nchar(all_bias_words_regex)-1)
+
+
+get_all_words_plot(all_bias_words_regex)
+
+ggsave("all_stigma_words_regex_plot.png")
+
+
+all_bias_words_regex_df <- get_summary_df(all_bias_words_regex)
 ```
 
