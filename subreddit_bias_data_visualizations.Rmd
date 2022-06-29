@@ -371,3 +371,31 @@ all_bias_words_regex_df <- get_summary_df(all_bias_words_regex)
 # Next steps: Word by word validation, see if any are poorly performing in capturing experiences of bias. Remove those, and then run the combined regex of all the most relevant terms, and then test that combined regex qualitatively 
 ```
 
+# Create sample of 10 posts including a word within each of the 12 stemword-related expanded lexicon 
+
+```{r sampling-for-coding}
+
+
+random_posts_per_stem <- function(stem_word){
+set.seed(424242)
+stem_word_df = tibble(stem_word)
+word_and_regex <- left_join(stem_word_df,stem_word_and_regex, by = "stem_word")
+random_df <- all_posts_df %>% 
+  filter(str_detect(body,word_and_regex$regex)) %>% 
+  slice_sample(n=10) %>% 
+  mutate(bias_and_stigma_described = "",
+         coder = "",
+         stem_word = stem_word,
+         regex = word_and_regex$regex)
+return(random_df)
+}
+
+random_posts_per_stem("junkie")
+library(purrr)
+library(furrr)
+possible_none <- purrr::possibly(random_posts_per_stem, otherwise = tidyr::tibble("NA"))
+words_dfs <- stem_word_and_regex$stem_word %>% 
+  map_dfr(random_posts_per_stem)
+write_csv(words_dfs,"random_moud_subreddit_posts_bias_lexicon.csv")
+```
+
