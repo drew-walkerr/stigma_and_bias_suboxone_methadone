@@ -15,7 +15,11 @@ library(lubridate)
 
 ```{r ggplot_word}
 
-all_posts_df <- read_csv("all_subreddit_bias_posts.csv")
+all_posts_df_body <- read_csv("all_subreddit_bias_posts.csv")
+all_posts_df_tokenized <- all_posts_df_body %>% 
+  unnest_tokens(sentence,body, token="sentences")
+
+all_posts_df <- left_join(all_posts_df_tokenized,all_posts_df_body, by = "id_") 
 
 word_list_with_stem <- read_csv("word_list_round_2.csv")
 word_list_with_stem$similar_word <- str_replace_all(word_list_with_stem$similar_word,"_"," ")
@@ -49,7 +53,7 @@ regex_list2 <- regex_list %>%
   mutate(regex2 = paste(regex,collapse="|")) %>% 
   distinct(stem_word,.keep_all = TRUE)  
 
-all_posts_counts <- all_posts_df %>% 
+all_posts_counts <- all_posts_df_body %>% 
     mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% group_by(month_year) %>% 
   mutate(all_sub_count = n(), 
@@ -58,7 +62,7 @@ all_posts_counts <- all_posts_df %>%
 
 # Function that builds summary data frame and ggplot (split into two). word = regex for stem word + expanded words + misspellings 
 get_summary_plot <- function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word)) %>% 
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
@@ -83,7 +87,7 @@ return(plot_obs)
 }
 
 get_summary_df <- function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word)) %>% 
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
@@ -105,7 +109,7 @@ test_plot
 
 ```{r popularity-plots}
 get_popularity_plot <- function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word)) %>% 
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
@@ -141,7 +145,7 @@ stem_word_and_regex <- regex_list2 %>%
 
 get_trigrams <-
  function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
   select(regex = value)
@@ -177,7 +181,7 @@ word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = n
 
 get_bigrams <-
  function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
   select(regex = value)
@@ -212,7 +216,7 @@ word_count_bar <- ggplot(word_count, aes(x= fct_reorder(ngram,n),y = n, fill = n
 # Get top words
 get_top_words <-
  function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word))
 stem_word = as_tibble(word) %>% 
   select(regex = value)
@@ -301,7 +305,7 @@ write_csv(stem_word_and_regex, "stem_word_and_regex.csv")
 
 Showing total number of comments and posts by month
 ```{r totals-plot}
-total_word_df <- all_posts_df %>%
+total_word_df <- all_posts_df_body %>%
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
   group_by(month_year) %>% 
@@ -328,7 +332,7 @@ ggsave("total_monthly_posts_and_comments.png")
 plot and df of all bias terms
 ```{r plot-summary-bias-terms}
 get_all_words_plot <- function(word){
-word_df <- all_posts_df %>%
+word_df <- all_posts_df_body %>%
   filter(str_detect(body, word)) %>% 
   mutate(day = as.Date(date(created)),
          month_year = floor_date(day, "month")) %>% 
@@ -381,7 +385,7 @@ set.seed(424242)
 stem_word_df = tibble(stem_word)
 word_and_regex <- left_join(stem_word_df,stem_word_and_regex, by = "stem_word")
 random_df <- all_posts_df %>% 
-  filter(str_detect(body,word_and_regex$regex)) %>% 
+  filter(str_detect(sentence,word_and_regex$regex)) %>%  #Change body to sentence 
   slice_sample(n=10) %>% 
   mutate(bias_and_stigma_described = "",
          coder = "",
@@ -395,7 +399,7 @@ library(purrr)
 library(furrr)
 possible_none <- purrr::possibly(random_posts_per_stem, otherwise = tidyr::tibble("NA"))
 words_dfs <- stem_word_and_regex$stem_word %>% 
-  map_dfr(random_posts_per_stem)
+  map_dfr(random_posts_per_stem)#place the sentence and body close together to be able to see where it is in the post
 write_csv(words_dfs,"random_moud_subreddit_posts_bias_lexicon.csv")
 ```
 
