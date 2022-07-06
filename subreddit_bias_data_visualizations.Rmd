@@ -400,6 +400,15 @@ library(furrr)
 possible_none <- purrr::possibly(random_posts_per_stem, otherwise = tidyr::tibble("NA"))
 words_dfs <- stem_word_and_regex$stem_word %>% 
   map_dfr(random_posts_per_stem)#place the sentence and body close together to be able to see where it is in the post
-write_csv(words_dfs,"random_moud_subreddit_posts_bias_lexicon.csv")
+
+words_dfs_clean <- words_dfs %>% 
+  select(id = id_,
+         body,
+         sentence,
+         bias_and_stigma_described,
+         coder,
+         stem_word,
+         regex)
+write_csv(words_dfs_clean,"random_moud_subreddit_posts_bias_lexicon.csv")
 ```
 
