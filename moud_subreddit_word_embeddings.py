@@ -1,8 +1,8 @@
 import numpy
 import pandas as pd
+import Cython
 import gensim
 from gensim.models import Word2Vec
-#requires Cython==0.29.23
 from gensim.models.keyedvectors import KeyedVectors
 from collections import defaultdict
 from gensim.models import Word2Vec, KeyedVectors
@@ -19,7 +19,7 @@ model2 = KeyedVectors.load_word2vec_format('trig-vectors-phrase.txt', binary=Fal
 # Added in this study: stigma, bias, stereotype, shame, blame (From studies on stigma, bias, and types of stigmatization referenced in literature)
 # Not included: clean, addicted baby, opioid substitution replacement therapy, medication-assisted treatment, former addict, reformed adict
 
-bias_stem_words = ["user","abuser","junkie","alcoholic", "drunk", "habit", "dirty", "stigma","bias","stereotype","shame","blame"]
+bias_stem_words = ["addict","user","abuser","junkie","alcoholic", "drunk", "habit", "dirty", "stigma","bias","stereotype","shame","blame"]
 
 
 bias_words_df = pd.DataFrame({
