@@ -67,11 +67,6 @@ regex_list2 <- regex_list2a %>%
     mutate(regex2 = paste(regexlist,collapse="|")) %>% 
   distinct(stem_word, .keep_all= TRUE)
 
-regex_list3 %>% 
-  select(stem_word,
-         former_regex = regex2,
-         regex_new) %>% 
-  write_csv("new_regex_list.csv")
 
 all_posts_counts <- all_posts_df_body %>% 
     mutate(day = as.Date(date(created)),
