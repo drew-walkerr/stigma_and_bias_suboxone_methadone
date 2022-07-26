@@ -11,6 +11,7 @@ library(tidyverse)
 library(tm)
 library(tidytext)
 library(lubridate)
+library(stringdist)
 ```
 
 ```{r ggplot_word}
@@ -48,10 +49,29 @@ bias_words_list <- bias_words_df %>%
 
 regex_list <- bind_rows(no_misspellings_word_list,bias_words_list) 
 
-regex_list2 <- regex_list %>% 
+regex_list2a <- regex_list %>% 
     group_by(stem_word) %>% 
   mutate(regex2 = paste(regex,collapse="|")) %>% 
   distinct(stem_word,.keep_all = TRUE)  
+
+#Regex 3 will be experiment to see if we can remove the words from regex that are not of max cosign similarity (to get rid of overlapping addict terms)
+
+regex_list2 <- regex_list2a %>% 
+  mutate(regexlist = as.list(strsplit(regex2, "|", fixed=TRUE))) %>% 
+  unnest(regexlist) %>% 
+  mutate(stem_similarity = stringdist(regexlist,stem_word,method = "cosine")) %>% 
+  group_by(regexlist) %>% 
+  filter(stem_similarity == min(stem_similarity)) %>% 
+  ungroup() %>% 
+  group_by(stem_word) %>% 
+    mutate(regex2 = paste(regexlist,collapse="|")) %>% 
+  distinct(stem_word, .keep_all= TRUE)
+
+regex_list3 %>% 
+  select(stem_word,
+         former_regex = regex2,
+         regex_new) %>% 
+  write_csv("new_regex_list.csv")
 
 all_posts_counts <- all_posts_df_body %>% 
     mutate(day = as.Date(date(created)),
