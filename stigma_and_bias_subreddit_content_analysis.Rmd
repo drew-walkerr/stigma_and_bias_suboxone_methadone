@@ -1,0 +1,139 @@
+---
+title: "stigma_and_bias_subreddits_qual_coding"
+author: "Drew Walker"
+date: "8/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(irr)
+library(janitor)
+library(table1)
+library(KappaGUI)
+library(here)
+library(knitr)
+library(gt)
+library(psych)
+here()
+library(table1)
+```
+
+
+```{r read_data}
+raw_annotation_data_coder_1 <- read_csv("codesheet_random_moud_subreddit_posts_bias_lexicon_dw.csv") %>% 
+  clean_names()
+
+
+merging_annotation_data_coder_1 <- raw_annotation_data_coder_1 %>% 
+  rename(bias_or_stigma_described_dw = bias_or_stigma_described)
+merging_annotation_data_coder_1$id2 <- 1:nrow(merging_annotation_data_coder_1)
+
+
+#Column names editing/cleaning 
+
+raw_annotation_data_coder_2 <-read_csv("codesheet_random_moud_subreddit_posts_bias_lexicon_JSL.csv") %>% 
+  clean_names() 
+
+merging_annotation_data_coder_2 <- raw_annotation_data_coder_2 %>% 
+  rename(bias_or_stigma_described_jsl = bias_or_stigma_described)
+
+merging_annotation_data_coder_2$id2 <- 1:nrow(merging_annotation_data_coder_2)
+
+
+combined_df <- left_join(merging_annotation_data_coder_1, merging_annotation_data_coder_2, by = "id2")
+str(combined_df)
+
+
+
+```
+
+# Pooled Kappas
+
+```{r pooled-kappas}
+# Can change the cols = columns to specify which the range of the categories
+# If we wanted to make a pooled kappa function, would need to indicate all columns for which we should elongate for the category item
+pooled_kappa_df <- combined_df %>% 
+  select(bias_or_stigma_described_dw,bias_or_stigma_described_jsl)
+
+kappa2(pooled_kappa_df)
+
+```
+## List of disagreements 
+```{r list-o-disagreements}
+combined_df_clean <- combined_df %>% 
+  select(id2,body=body.x,sentence=sentence.x,stem_word=stem_word.x,bias_or_stigma_described_dw, bias_or_stigma_described_jsl,drew_notes = notes.x,jenn_notes = notes.y) %>% 
+  mutate(agree = case_when(bias_or_stigma_described_dw == 0 & bias_or_stigma_described_jsl == 0 | bias_or_stigma_described_dw == 1 & bias_or_stigma_described_jsl == 1 ~ "1", TRUE ~"0"))
+
+agreements <- combined_df %>% 
+  select(id2,body=body.x,sentence=sentence.x,stem_word=stem_word.x,bias_or_stigma_described_dw, bias_or_stigma_described_jsl,drew_notes = notes.x,jenn_notes = notes.y) %>% 
+  mutate(agree = case_when(bias_or_stigma_described_dw == 0 & bias_or_stigma_described_jsl == 0 | bias_or_stigma_described_dw == 1 & bias_or_stigma_described_jsl == 1 ~ "1", TRUE ~"0"))%>% 
+  filter(agree == "1") %>% 
+  mutate(adjudication = bias_or_stigma_described_dw)
+
+disagreements_df <- combined_df_clean%>% 
+  filter(agree == "0")
+disagreements_df
+write_csv(disagreements_df, "disagreements.csv", na = "")
+
+most_disagreed <- disagreements_df %>% 
+  group_by(stem_word) %>% 
+  summarize(total_disagreements = n()) %>% 
+  arrange(desc(total_disagreements))
+most_disagreed
+```
+# add in adjudications
+
+```{r adjudications}
+adjudications <- read_csv("adjudications.csv")
+adjudications$agree <- as.character(adjudications$agree)
+
+combined_final_adjudicated <- bind_rows(adjudications,agreements)
+
+```
+
+
+# Per-stem_word bias validation
+```{r per-category-kappas}
+stem_word_total_biased <- combined_final_adjudicated %>% 
+  group_by(stem_word) %>% 
+  filter(adjudication == "1") %>% 
+  summarize(bias_count = n())
+stem_word_total_biased %>% 
+  arrange(desc(bias_count))
+```
+
+# Pooled kappas 
+
+
+# Enumeration with agreements
+
+investigate issue with multiple rows 
+```{r adjudicated}
+agreements_df <- combined_df_categories_coders_wide %>% 
+  mutate(agree = case_when(`1` == 0 & `2` == 0 | `1` == 1 & `2` == 1 ~ "1", TRUE ~"0")) %>%
+  filter(agree == "1")
+combined_merge_with_adj <- agreements_df %>% 
+  mutate(Adj = case_when(`1` == 0 & `2` == 0~ "0",
+                         `1` == 1 & `2` == 1 ~ "1"))
+
+adj_disagreements <- read_csv("disagreements_adjudicated.csv") %>% 
+  select(id, category,Adj)
+
+adj_disagreements$Adj <- as.character(adj_disagreements$Adj)
+
+disagreements_adj_merge <- left_join(disagreements_df, adj_disagreements, by = c("id", "category"))
+
+# Change percentage denominator to number of total in sample 
+combined_enumeration_df <- bind_rows(combined_merge_with_adj,disagreements_adj_merge)
+combined_enumeration_df$Adj <- as.integer(combined_enumeration_df$Adj)
+category_counts <- combined_enumeration_df %>% 
+  group_by(category) %>% 
+  summarize(count = sum(Adj)) %>% 
+  mutate(percentage = count/27) %>% 
+  arrange(desc(percentage))
+
+
+category_counts
+```
