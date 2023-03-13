@@ -14,9 +14,48 @@ library(lubridate)
 library(stringdist)
 ```
 
+
+
+## Notes 3.12.23
+
+* Reads in already filtered post for these: 
+bias_big_df = bigdf[bigdf['body'].str.contains('abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame|user', na=False)]
+
+* This was from subreddit_data_compile.py
+* Updated is subreddit_data_load.py
+
+
 ```{r ggplot_word}
 
-all_posts_df_body <- read_csv("all_subreddit_bias_posts.csv")
+all_posts_df_body1 <- read_csv("all_subreddit_posts.csv")
+subreddit_ids <- read_csv("subreddit_ids.csv")
+str(all_posts_df_body1)
+all_posts_df_body <- left_join(all_posts_df_body1,subreddit_ids, by = "subreddit_id")
+
+## Descriptives
+subreddit_counts <- all_posts_df_body %>% 
+  group_by(subreddit) %>% 
+  summarize(total_count = n(),
+            post_count = sum(is_submitter),
+              comment_count = total_count - post_count) %>% 
+  rename(`Total Posts and Comments` = total_count,
+         `Total Posts` = post_count,
+         `Total Comments` = comment_count) %>% 
+  arrange(desc(`Total Posts and Comments`))
+
+total_count <- all_posts_df_body %>% 
+  summarize(total_count = n(),
+            post_count = sum(is_submitter),
+              comment_count = total_count - post_count) %>% 
+  rename(`Total Posts and Comments` = total_count,
+         `Total Posts` = post_count,
+         `Total Comments` = comment_count) %>% 
+  arrange(desc(`Total Posts and Comments`))
+
+
+library(gt)
+gt(subreddit_counts)
+
 all_posts_df_tokenized <- all_posts_df_body %>% 
   unnest_tokens(sentence,body, token="sentences")
 
@@ -28,19 +67,25 @@ word_list_with_stem$similar_word <- str_replace_all(word_list_with_stem$similar_
 #"abuser|junkie|alcoholic|drunk|habit|dirty|stigma|bias|stereotype|shame|blame"
 
 bias_words_df <- read_csv("expanded_misspellings.csv")
+
+```
+
+
+```{r read_in_expanded}
+### 
 #Columns 0-27 include all misspelling words
 no_misspellings_word_list <- bias_words_df %>% 
-  pivot_longer(!X1, names_to = "number",values_to ="ms_word") %>% 
+  pivot_longer(!"...1", names_to = "number",values_to ="ms_word") %>% 
   filter(number == "0") %>% 
   filter(is.na(ms_word)) %>% 
-  select(regex = X1) %>% 
+  select(regex = "...1") %>% 
   mutate(similar_word = regex) %>% 
   left_join(word_list_with_stem,by = "similar_word")
 
 bias_words_list <- bias_words_df %>% 
-  pivot_longer(!X1, names_to = "number",values_to ="ms_word") %>% 
+  pivot_longer(!"...1", names_to = "number",values_to ="ms_word") %>% 
   drop_na() %>% 
-  rename(similar_word = X1) %>% 
+  rename(similar_word = "...1") %>% 
   left_join(word_list_with_stem, by = "similar_word") %>% 
   group_by(stem_word) %>% 
   mutate(regex = paste(ms_word,collapse="|")) %>% 
@@ -117,6 +162,51 @@ test_plot <- get_summary_plot("users|user")
 test_plot
 
 ```
+
+
+## Lexicon SNA
+
+```{r lexicon_sna}
+# Load the igraph package
+library(igraph)
+library(network)
+library(sna)
+
+# Read in the edge-list data frame
+edge_list <- word_list_with_stem
+
+# 
+bias_words_list_split <- bias_words_list %>% 
+  separate(regex, into = paste0("col", 1:max(str_count(bias_words_list$regex, "\\|"))+1), sep = "\\|")
+
+# use pivot_longer() to combine the new columns back into one column titled "expanded_word"
+edgelist_huge <- bias_words_list_split %>%
+  pivot_longer(cols = starts_with("col"), values_to = "expanded_word") %>%
+  select(-name,-similar_word) %>%
+  distinct() %>% 
+  filter(!is.na(expanded_word)) %>% 
+  filter(expanded_word != stem_word)
+
+edge_list_shame <- edgelist_huge %>% 
+  filter(stem_word == "shame")
+
+  
+# Create a graph object from the edge-list
+graph <- graph_from_data_frame(edge_list_shame, directed = FALSE)
+
+# Set vertex attributes
+V(graph)$label <- V(graph)$name 
+
+# Set edge attributes
+E(graph)$color <- "gray"
+E(graph)$arrow.mode <- 0
+
+# Plot the graph
+plot(graph, vertex.size = 1, vertex.color = "lightblue", vertex.label.color = "black", asp = .65, edge.width = 2, vertex.label.cex=.7)
+
+```
+
+
 
 
 # Popularity plots
@@ -382,10 +472,27 @@ all_bias_words_regex <- str_sub(all_bias_words_regex,1,nchar(all_bias_words_rege
 get_all_words_plot(all_bias_words_regex)
 
 ggsave("all_stigma_words_regex_plot.png")
-
-
+str(all_bias_words_regex_df$month_year)
+all_bias_words_regex_df$month_year <- as.character(all_bias_words_regex_df$month_year)
 all_bias_words_regex_df <- get_summary_df(all_bias_words_regex)
 
+# Count it all up 
+
+bias_posts_counts_totals <- all_bias_words_regex_df %>% 
+  ungroup() %>% 
+  summarize(total_count = n(),
+            post_count = sum(is_submitter),
+              comment_count = total_count - post_count) %>% 
+  rename(`Total Posts and Comments` = total_count,
+         `Total Posts` = post_count,
+         `Total Comments` = comment_count) %>% 
+  arrange(desc(`Total Posts and Comments`))
+
+bias_counts <- all_bias_words_regex_df %>% 
+  distinct(month_year, .keep_all = TRUE)
+biased_posts_comments <- sum(bias_counts$count)
+all_posts_comments_number <- sum(bias_counts$all_sub_count)
+biased_posts_comments/all_posts_comments_number
 # Looks like a majority of posts contain these terms. 
 # Next steps: Word by word validation, see if any are poorly performing in capturing experiences of bias. Remove those, and then run the combined regex of all the most relevant terms, and then test that combined regex qualitatively 
 ```
@@ -425,5 +532,17 @@ words_dfs_clean <- words_dfs %>%
          stem_word,
          regex)
 write_csv(words_dfs_clean,"random_moud_subreddit_posts_bias_lexicon.csv")
+```
+bias qual plot
+```{r bias-qual-plot}
+bias_words_qual_count <- read_csv("bias_words_qual_count.csv")
+
+ggplot(bias_words_qual_count, aes(x = fct_reorder(word,percentage_biased), y = percentage_biased)) + geom_bar(stat = "identity") +
+  labs(y = "Percentage Describing Experience of Stigmatization", x = "Word") +
+  scale_y_continuous(labels = scales::percent_format()) +
+   coord_flip()+
+  theme(axis.text.y = element_text(size = 16))
+  theme_pubclean()
+ggsave("bias_words_qual.png")
 ```
 
